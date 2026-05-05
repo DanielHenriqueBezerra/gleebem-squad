@@ -79,7 +79,7 @@ repositories {
 
 
 dependencies {
-  api files('libs/shenai_sdk.aar')
+  compileOnly files('libs/shenai_sdk.aar')
   //noinspection GradleDynamicVersion
   implementation "com.facebook.react:react-native:+"
 }
