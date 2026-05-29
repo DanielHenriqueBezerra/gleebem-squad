@@ -100,10 +100,10 @@ export default function ResultScreen({ navigation, route }: Props) {
 
         {/* Métricas 2×2 */}
         <View style={styles.metricsRow}>
-          <MetricCard title="Freq. Cardíaca" value={results.heartRate.toString()} unit="bpm" status="Normal" statusType="ok" />
-          <MetricCard title="Variab. Cardíaca" value={results.hrvTotal.toString()} unit="ms" status="Normal" statusType="ok" />
+          <MetricCard title="Freq. Cardíaca" value={Math.round(results.heartRate).toString()} unit="bpm" status="Normal" statusType="ok" />
+          <MetricCard title="Variab. Cardíaca" value={Math.round(results.hrvTotal).toString()} unit="ms" status="Normal" statusType="ok" />
           <MetricCard title="Nível de Estresse" value={results.stressScore > 55 ? 'Alto' : results.stressScore > 35 ? 'Médio' : 'Baixo'} status={results.stressScore > 55 ? 'Atenção' : 'Normal'} statusType={results.stressScore > 55 ? 'warn' : 'ok'} />
-          <MetricCard title="Respiração" value={results.respiratoryRate.toString()} unit="rpm" status="Normal" statusType="ok" />
+          <MetricCard title="Respiração" value={Math.round(results.respiratoryRate).toString()} unit="rpm" status="Normal" statusType="ok" />
         </View>
 
         {/* Gauge estresse */}

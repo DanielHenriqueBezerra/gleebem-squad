@@ -168,10 +168,10 @@ export async function saveShenaiResultToFirebase(results: any): Promise<ShenaiSc
     const userId = 'user_demo_gleebem_123';
     const testsCollectionRef = collection(db, 'users', userId, 'wellness_tests');
 
-    const hr = results.heartRateBpm || 0;
-    const hrv = results.hrvSdnnMs || 0;
-    const stress = results.stressIndex || 0;
-    const br = results.breathingRateBpm || 0;
+    const hr     = Math.round(results.heartRateBpm     || 0);
+    const hrv    = Math.round(results.hrvSdnnMs        || 0);
+    const stress = Math.round(results.stressIndex      || 0);
+    const br     = Math.round(results.breathingRateBpm || 0);
 
     const newDoc = await addDoc(testsCollectionRef, {
       userId,
@@ -192,10 +192,10 @@ export async function saveShenaiResultToFirebase(results: any): Promise<ShenaiSc
     return { heartRate: hr, hrvTotal: hrv, stressScore: stress, respiratoryRate: br, measurementId: newDoc.id, wellnessScore };
   } catch (err: any) {
     console.error('Erro ao salvar no Firestore:', err.message);
-    const hr = results.heartRateBpm || 0;
-    const hrv = results.hrvSdnnMs || 0;
-    const stress = results.stressIndex || 0;
-    const br = results.breathingRateBpm || 0;
+    const hr     = Math.round(results.heartRateBpm     || 0);
+    const hrv    = Math.round(results.hrvSdnnMs        || 0);
+    const stress = Math.round(results.stressIndex      || 0);
+    const br     = Math.round(results.breathingRateBpm || 0);
     return { heartRate: hr, hrvTotal: hrv, stressScore: stress, respiratoryRate: br, measurementId: 'offline_scan', wellnessScore };
   }
 }
