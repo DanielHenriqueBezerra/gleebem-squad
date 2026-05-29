@@ -1,5 +1,9 @@
 {
   "android": {
     "package": "com.anonymous.gleebemapp"
-  }
+  },
+  "plugins": [
+    "expo-font",
+    "expo-router"
+  ]
 }
