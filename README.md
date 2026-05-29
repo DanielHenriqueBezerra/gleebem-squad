@@ -7,7 +7,7 @@ Módulo funcional de escaneamento de saúde (Health Scan) construído em React N
 - **Expo SDK 54** (Suporte a iOS, Android e Web)
 - **React Navigation Stack** (Navegação customizada)
 - **Firebase/Firestore SDK** (Banco de dados e LGPD)
-- **Shen.ai SDK** Wrapper (Simulador atual)
+- **Shen.ai SDK 3.0.12** (Medição de sinais vitais via câmera — rPPG)
 
 ## 📦 Como baixar e rodar na sua máquina
 
@@ -15,7 +15,7 @@ Módulo funcional de escaneamento de saúde (Health Scan) construído em React N
 Faça o clone no repositório oficial do Github:
 ```bash
 git clone https://github.com/jeffjr007/gleebem-squad.git
-cd gleebem-squad/gleebem-app
+cd gleebem-squad
 ```
 
 ### 2. Instalar as dependências
@@ -25,8 +25,7 @@ npm install
 ```
 
 ### 3. Configurar Variáveis de Ambiente (.env)
-A boa prática para chaves (como as do Firebase e APIs) é não publicá-las em arquivos `.ts` diretamente, e elas não vão para o GitHub.
-Crie um arquivo chamado `.env` na raiz do projeto baseado no arquivo `.env.example` e insira suas chaves do Firebase:
+Crie um arquivo chamado `.env` na raiz do projeto baseado no arquivo `.env.example` e insira suas chaves:
 
 ```env
 # Firebase Connection Keys
@@ -40,52 +39,69 @@ EXPO_PUBLIC_FIREBASE_APP_ID=seu_app_id
 # Shen.ai Key
 EXPO_PUBLIC_SHENAI_API_KEY=sua_chave_shenai_de_producao
 ```
-*O Expo vai importar essas variáveis automaticamente com o prefixo EXPO_PUBLIC_*
 
-### 4. Rodar o App (Testes / Dev)
+### 4. Configurar a Dependência Nativa — Shen.ai SDK (.aar)
+
+> ⚠️ **Obrigatório para o build Android funcionar.**
+
+O arquivo binário do Shen.ai SDK **não está incluso no repositório** (está no `.gitignore`). Você deve obtê-lo manualmente:
+
+1. Acesse o portal [developer.shen.ai](https://developer.shen.ai) e baixe o SDK na versão **exata 3.0.12** para Android
+2. Localize o arquivo `shenai_sdk.aar` dentro do pacote baixado
+3. Crie o diretório (se não existir) e coloque o arquivo em:
+   ```
+   react-native-shenai-sdk/android/libs/shenai_sdk.aar
+   ```
+
+### 5. Instalar o NDK 29 no Android Studio
+
+O SDK do Shen.ai 3.0.12 foi compilado contra o **NDK 29.0.14206865**. O `android/build.gradle` já está configurado com essa versão — você só precisa instalá-la:
+
+1. Abra o **Android Studio**
+2. Vá em **SDK Manager → SDK Tools**
+3. Marque **"Show Package Details"** (canto inferior direito)
+4. Em **NDK (Side by Side)**, marque a versão `29.0.14206865`
+5. Clique em **Apply** e aguarde o download
+
+### 6. Rodar o App
 
 **🔗 Download Direto do APK (Android)**
-Para quem for apenas testar o app (sem rodar código local), o APK atualizado está disponível no Google Drive:
+Para quem for apenas testar (sem rodar código local):
 [**Acessar pasta no Drive**](https://drive.google.com/drive/folders/18StK9mEANxOUIPMQZitsvptoSX1dYyiU)
 
 ---
 
-**Para desenvolvedores - rodar na Web (Computador):**
+**Para desenvolvedores — rodar na Web (visualização apenas):**
 ```bash
 npx expo start --web
 ```
-> ⚠️ **Atenção:** Na web, você conseguirá ver a navegação do App, mas o escaneamento da **Shen.ai não funcionará** pois ele depende de código nativo C++ da câmera do dispositivo móvel.
+> ⚠️ Na web o escaneamento **não funciona** — o SDK depende de código nativo C++.
 
-**Para testar o Motor de IA Real (Shen.ai SDK) no seu Celular:**
-Como o SDK da Shen.ai usa recursos de Machine Learning e processamento nativo que não existem no Expo Go ou no Navegador, você obrigatoriamente precisa realizar um **Build Nativo** do aplicativo e instalar via cabo USB.
+**Para testar o SDK real no celular (build nativo):**
 
-**Requisitos Iniciais (Apenas na 1ª Vez - Windows/Android):**
-1. **Java JDK 17:** Instale o Java e configure a variável de sistema `JAVA_HOME`.
-2. **Android Studio:** Instale para ter o Android SDK, e certifique-se de configurar a variável `ANDROID_HOME` (ex: `C:\Users\SEU_USUARIO\AppData\Local\Android\Sdk`).
-3. **Depuração USB no Celular:** 
-   - Vá em Configurações > Sobre o Telefone e toque 7 vezes em "Número da Versão" (Build Number).
-   - Volte, entre em Opções do Desenvolvedor e ative **Depuração USB**.
-   - Conecte o celular no computador e "Permita" o acesso quando o pop-up surgir na tela do celular.
+**Requisitos:**
+- **Java JDK 17** com `JAVA_HOME` configurado
+- **Android Studio** com `ANDROID_HOME` configurado (ex: `C:\Users\SEU_USUARIO\AppData\Local\Android\Sdk`)
+- **Depuração USB** ativada no celular (Configurações → Sobre → toque 7x em "Número da Versão" → Opções do Desenvolvedor → Depuração USB)
+- Celular conectado via USB com acesso autorizado
 
-Com o celular conectado e reconhecido, rode o comando:
+Com tudo configurado:
 ```bash
 npx expo run:android
 ```
-Ele vai compilar todo o código nativo (pode demorar alguns minutos na primeira vez) e o app da Gleebem vai abrir magicamente na tela do seu celular, pronto para o scan real!
+O Gradle vai compilar o código nativo (~5–10 min na primeira vez), instalar o APK via ADB e abrir o app automaticamente.
 
 ### 💡 Dicas Vitais para o Teste do Shen.ai
-Para que o SDK conclua a medição com sucesso e não trave a barra de progresso:
-1. **Fique de frente para a luz:** O algoritmo rPPG precisa ver o sangue pulsando no seu rosto. Se você ficar de costas para a janela/lâmpada, aparecerá o erro **"Contraluz"** e o cronômetro será pausado pelo próprio SDK por segurança.
-2. **Tempo de medição:** A barra de progresso cinza leva exatamente **30 segundos** para encher. Não fale e não mexa muito o rosto.
-3. **Se travar no final:** Verifique se as chaves do Firebase estão corretas no `.env`. Sem elas, os dados são lidos, mas não são enviados para a nuvem.
+1. **Fique de frente para a luz:** O algoritmo rPPG precisa ver o sangue pulsando no rosto. De costas para a luz aparece o erro "Contraluz" e o cronômetro pausa.
+2. **Tempo de medição:** A barra de progresso leva exatamente **30 segundos**. Não fale e não mexa o rosto.
+3. **Se travar no final:** Verifique se as chaves do Firebase estão corretas no `.env`.
 
 ## 🗄 Banco de Dados (Firebase Firestore)
-O app salva automaticamente os dados no Firestore (ex: `/users/{uid}/wellness_tests`). 
+O app salva automaticamente os dados no Firestore em `/users/{uid}/wellness_tests`.
 
 ### Regras do Firestore
-Atualmente estamos utilizando o banco em ambiente local de teste. Para funcionar na sua máquina sem o sistema de Login (Auth) pronto, substitua as regras do seu Firebase por esta:
 
-**Para testes (Atual):**
+**Para testes (sem autenticação):**
 ```javascript
 rules_version = '2';
 service cloud.firestore {
@@ -97,7 +113,7 @@ service cloud.firestore {
 }
 ```
 
-**Para produção (Após integrar Login):**
+**Para produção (após integrar Login):**
 ```javascript
 rules_version = '2';
 service cloud.firestore {
@@ -108,3 +124,42 @@ service cloud.firestore {
   }
 }
 ```
+
+## 🔧 Solução de Problemas Conhecidos
+
+### ADB não encontrado ao rodar `npx expo run:android`
+**Erro:** `adb: line 3: /usr/bin/adb: No such file or directory`
+
+Isso acontece quando existe um shell script chamado `adb` no lugar do executável real. Corrija:
+```powershell
+# No PowerShell (como Administrador)
+Rename-Item "$env:ANDROID_HOME\platform-tools\adb.exe.bak" -NewName "adb.exe"
+Remove-Item "$env:ANDROID_HOME\platform-tools\adb" -Force
+```
+
+---
+
+### "Unable to load script" ao abrir o app no celular
+O celular não está conseguindo se conectar ao Metro bundler no PC. Execute após o app abrir:
+```bash
+adb reverse tcp:8081 tcp:8081
+```
+Depois pressione **R, R** no celular para recarregar.
+
+> **Se tiver WSL configurado com portproxy na porta 8081**, o túnel ADB será interceptado. Remova a regra (PowerShell como Administrador):
+> ```powershell
+> netsh interface portproxy delete v4tov4 listenaddress=127.0.0.1 listenport=8081
+> ```
+
+---
+
+### Build falha com erro de linker C++ (`undefined symbol: operator new`)
+**Causa:** incompatibilidade de versão do NDK ou do `.aar`.
+
+Verifique:
+1. O NDK **29.0.14206865** está instalado (ver Passo 5 acima)
+2. O arquivo `shenai_sdk.aar` é da versão **3.0.12** do SDK (não 3.1.0 ou outra)
+3. Limpe o cache e rebuilde:
+   ```bash
+   cd android && ./gradlew clean && cd .. && npx expo run:android
+   ```
