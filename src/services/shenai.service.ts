@@ -138,6 +138,8 @@ export async function executeWellnessScan(): Promise<ShenaiScanResult | null> {
  * O Wellness Score é obtido diretamente de getHealthRisks() da Shen.ai.
  */
 export async function saveShenaiResultToFirebase(results: any): Promise<ShenaiScanResult | null> {
+  if (!results) return null;
+
   // Buscar o Wellness Score real da API da Shen.ai (0-100)
   // Conforme documentação: getHealthRisks() retorna { wellnessScore: number | null, ... }
   let wellnessScore = 0;
