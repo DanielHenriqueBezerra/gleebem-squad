@@ -13,7 +13,7 @@ import ResultScreen from './src/screens/ResultScreen';
 import RecommendationsScreen from './src/screens/RecommendationsScreen';
 import ScreenErrorBoundary from './src/components/ScreenErrorBoundary';
 
-import { ShenaiScanResult } from './src/services/shenai.service';
+import type { ShenaiScanResult } from './src/services/shenai.service';
 
 export type RootStackParamList = {
   Intro: undefined;

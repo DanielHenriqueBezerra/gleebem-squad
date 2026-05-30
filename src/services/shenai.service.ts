@@ -1,18 +1,7 @@
-import { PermissionsAndroid, Platform, Alert } from 'react-native';
+import { PermissionsAndroid, Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
-
-import {
-  initialize,
-  InitializationResult,
-  getMeasurementResults,
-  getMeasurementState,
-  startMeasurement,
-  setLanguage,
-  setCustomColorTheme,
-  getHealthRisks,
-  MeasurementPreset,
-} from 'react-native-shenai-sdk';
 
 /**
  * Interface padronizada do resultado do Shen.ai
@@ -26,10 +15,57 @@ export interface ShenaiScanResult {
   wellnessScore: number; // 0-100 — proveniente de getHealthRisks() da Shen.ai
 }
 
+const isExpoGo = Constants.appOwnership === 'expo';
+
+function getShenaiSdk(): any | null {
+  if (isExpoGo) return null;
+
+  try {
+    return require('react-native-shenai-sdk');
+  } catch (err) {
+    console.warn('SDK nativo Shen.ai indisponivel neste ambiente:', err);
+    return null;
+  }
+}
+
+function getExpoGoMockResult(): ShenaiScanResult {
+  return {
+    heartRate: 72,
+    hrvTotal: 46,
+    stressScore: 24,
+    respiratoryRate: 15,
+    measurementId: 'expo_go_mock',
+    wellnessScore: 84,
+  };
+}
+
+export async function requestCameraPermission(): Promise<boolean> {
+  if (Platform.OS !== 'android') return true;
+
+  const alreadyGranted = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.CAMERA);
+  if (alreadyGranted) return true;
+
+  const granted = await PermissionsAndroid.request(
+    PermissionsAndroid.PERMISSIONS.CAMERA,
+    {
+      title: "Permissao de Camera",
+      message: "O aplicativo precisa de acesso a camera para medir seus sinais vitais.",
+      buttonNeutral: "Perguntar depois",
+      buttonNegative: "Cancelar",
+      buttonPositive: "OK"
+    }
+  );
+
+  return granted === PermissionsAndroid.RESULTS.GRANTED;
+}
+
 /**
  * Inicializa o SDK usando a API Key configurada no .env
  */
 export async function initializeShenAI(): Promise<boolean> {
+  const shenai = getShenaiSdk();
+  if (!shenai) return false;
+
   const apiKey = process.env.EXPO_PUBLIC_SHENAI_API_KEY || '';
   if (!apiKey) {
     console.error('API Key da Shen.ai não encontrada no .env');
@@ -39,18 +75,18 @@ export async function initializeShenAI(): Promise<boolean> {
   const userId = 'user_demo_gleebem_123';
   
   try {
-    const result = await initialize(apiKey, userId, {
+    const result = await shenai.initialize(apiKey, userId, {
       showUserInterface: true,
       enableStartAfterSuccess: true,
       enableSummaryScreen: false,
-      measurementPreset: MeasurementPreset.THIRTY_SECONDS_ALL_METRICS,
+      measurementPreset: shenai.MeasurementPreset.THIRTY_SECONDS_ALL_METRICS,
     });
 
-    if (result === InitializationResult.OK) {
+    if (result === shenai.InitializationResult.OK) {
       console.log('✅ Shen.ai SDK Inicializado com Sucesso!');
       try {
-        await setLanguage('pt');
-        await setCustomColorTheme({
+        await shenai.setLanguage('pt');
+        await shenai.setCustomColorTheme({
           themeColor: '#4BA4CE',
           textColor: '#FFFFFF',
           backgroundColor: '#0C1820',
@@ -78,22 +114,17 @@ export async function initializeShenAI(): Promise<boolean> {
  * Pede permissão e inicia a medição (executeWellnessScan)
  */
 export async function executeWellnessScan(): Promise<ShenaiScanResult | null> {
-  // 1. Pedir permissão de Câmera (Android)
-  if (Platform.OS === 'android') {
-    const granted = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.CAMERA,
-      {
-        title: "Permissão de Câmera",
-        message: "O aplicativo precisa de acesso à câmera para medir seus sinais vitais.",
-        buttonNeutral: "Perguntar depois",
-        buttonNegative: "Cancelar",
-        buttonPositive: "OK"
-      }
-    );
-    if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-      console.warn("Permissão de câmera negada");
-      return null;
-    }
+  if (isExpoGo) {
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    return getExpoGoMockResult();
+  }
+
+  const shenai = getShenaiSdk();
+  if (!shenai) return null;
+  const hasPermission = await requestCameraPermission();
+  if (!hasPermission) {
+    console.warn("Permissao de camera negada");
+    return null;
   }
 
   // 2. Inicializar o SDK
@@ -101,18 +132,18 @@ export async function executeWellnessScan(): Promise<ShenaiScanResult | null> {
   if (!isInit) return null;
 
   // Chama o SDK nativo
-  await startMeasurement();
+  await shenai.startMeasurement();
 
   // Polling para aguardar o fim da medição com dados 100% reais do SDK
   return new Promise(resolve => {
     const interval = setInterval(async () => {
       try {
-        const state = await getMeasurementState();
+        const state = await shenai.getMeasurementState();
         
         // MeasurementState.FINISHED = 7
         if (state === 7) {
           clearInterval(interval);
-          const results = await getMeasurementResults();
+          const results = await shenai.getMeasurementResults();
           if (results) {
             const final = await saveShenaiResultToFirebase(results);
             resolve(final);
@@ -140,11 +171,13 @@ export async function executeWellnessScan(): Promise<ShenaiScanResult | null> {
 export async function saveShenaiResultToFirebase(results: any): Promise<ShenaiScanResult | null> {
   if (!results) return null;
 
+  const shenai = getShenaiSdk();
+
   // Buscar o Wellness Score real da API da Shen.ai (0-100)
   // Conforme documentação: getHealthRisks() retorna { wellnessScore: number | null, ... }
   let wellnessScore = 0;
   try {
-    const healthRisks = await getHealthRisks();
+    const healthRisks = shenai ? await shenai.getHealthRisks() : null;
     if (healthRisks && healthRisks.wellnessScore !== null && healthRisks.wellnessScore !== undefined) {
       // Normalizar: se vier no formato 0.0-1.0, converter para 0-100
       const raw = healthRisks.wellnessScore;
